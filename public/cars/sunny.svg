@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title desc">
+  <title id="title">Nissan Sunny rental car</title>
+  <desc id="desc">White sedan rental car illustration.</desc>
+  <rect width="640" height="360" fill="#f4f7fb"/>
+  <path d="M72 238h492c16 0 29-13 29-29v-19c0-18-13-33-30-36l-92-17-58-50c-14-12-31-18-49-18H246c-22 0-43 9-58 25l-43 47-59 19c-14 5-24 18-24 33v35c0 6 4 10 10 10Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="4"/>
+  <path d="M251 96h109c12 0 23 4 32 12l32 28H177l35-27c11-8 25-13 39-13Z" fill="#bae6fd"/>
+  <path d="M247 105h60v31H198l20-17c8-9 18-14 29-14Zm79 0h34c9 0 18 3 25 9l25 22h-84v-31Z" fill="#e0f2fe"/>
+  <path d="M102 204h84m268 0h105" stroke="#2563eb" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="189" cy="240" r="44" fill="#0f172a"/>
+  <circle cx="189" cy="240" r="18" fill="#e5e7eb"/>
+  <circle cx="478" cy="240" r="44" fill="#0f172a"/>
+  <circle cx="478" cy="240" r="18" fill="#e5e7eb"/>
+</svg>
