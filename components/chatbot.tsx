@@ -1,10 +1,24 @@
 "use client";
 
+import type { Car } from "@/data/cars";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Message = {
   role: "user" | "assistant";
   text: string;
+  cars?: Car[];
+  payment?: boolean;
+};
+
+type ChatResponse = {
+  reply?: string;
+  cars?: Car[];
+};
+
+export type CustomerInfo = {
+  name: string;
+  phone: string;
+  email: string;
 };
 
 const cityOptions = [
@@ -36,12 +50,236 @@ const budgetOptions = [
 
 const carTypeOptions = ["Economy", "Sedan", "SUV", "Luxury", "7-seater", "Monthly rental"];
 
-const bookingSteps = [
-  "Location Selected",
-  "Car & Delivery",
-  "Select Insurance",
-  "Make Payment",
-];
+function getFallbackCarImage(category: string) {
+  if (category === "SUV" || category === "7-seater") {
+    return "/cars/creta.svg";
+  }
+
+  if (category === "Sedan" || category === "Luxury") {
+    return "/cars/sunny.svg";
+  }
+
+  return "/cars/yaris.svg";
+}
+
+function ChatCarImage({ car }: { car: Car }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={imageFailed ? getFallbackCarImage(car.category) : car.image}
+      alt={`${car.year} ${car.model}`}
+      className="h-36 w-full object-cover"
+      onError={() => setImageFailed(true)}
+    />
+  );
+}
+
+function ChatCarCard({ car }: { car: Car }) {
+  return (
+    <article className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="relative">
+        <ChatCarImage car={car} />
+        <span
+          className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold ${
+            car.available ? "bg-emerald-600 text-white" : "bg-gray-900 text-white"
+          }`}
+        >
+          {car.available ? "Available" : "Booked"}
+        </span>
+      </div>
+
+      <div className="space-y-3 p-4 text-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-semibold text-[#1175ff]">{car.category}</p>
+            <h4 className="mt-1 text-lg font-bold text-neutral-900">{car.model}</h4>
+          </div>
+          <p className="shrink-0 font-semibold text-gray-500">{car.year}</p>
+        </div>
+
+        <dl className="grid grid-cols-2 gap-2 text-gray-700">
+          <div>
+            <dt className="text-xs font-semibold uppercase text-gray-400">Brand</dt>
+            <dd>{car.brand}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase text-gray-400">Daily</dt>
+            <dd>AED {car.pricing.daily}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase text-gray-400">Weekly</dt>
+            <dd>AED {car.pricing.weekly}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase text-gray-400">Monthly</dt>
+            <dd>AED {car.pricing.monthly}</dd>
+          </div>
+        </dl>
+
+        <div className="flex flex-wrap gap-1.5">
+          {car.features.map((feature) => (
+            <span
+              key={feature}
+              className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700"
+            >
+              {feature}
+            </span>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PaymentGateway() {
+  const [method, setMethod] = useState<"apple-pay" | "card">("apple-pay");
+  const [paid, setPaid] = useState(false);
+
+  if (paid) {
+    return (
+      <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
+        <p className="text-lg font-bold">Payment request received</p>
+        <p className="mt-2 text-sm leading-6">
+          This demo checkout is complete. In production, this panel should be
+          connected to Stripe, Checkout.com, Network, Telr, or your approved
+          UAE payment provider before charging real cards.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-2xl border border-blue-100 bg-white text-neutral-950 shadow-sm">
+      <div className="bg-gradient-to-r from-blue-900 to-blue-700 p-5 text-white">
+        <p className="text-sm font-bold uppercase tracking-[0.16em]">
+          Secure checkout
+        </p>
+        <div className="mt-4 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-3xl font-black">AED 500.00</p>
+            <p className="mt-1 text-sm text-blue-100">
+              Booking deposit / verification hold
+            </p>
+          </div>
+          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold">
+            Demo
+          </span>
+        </div>
+      </div>
+
+      <div className="p-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setMethod("apple-pay")}
+            className={`rounded-xl border px-4 py-3 text-left font-bold transition ${
+              method === "apple-pay"
+                ? "border-neutral-950 bg-neutral-950 text-white"
+                : "border-gray-200 bg-white text-neutral-900"
+            }`}
+          >
+            Apple Pay
+          </button>
+          <button
+            type="button"
+            onClick={() => setMethod("card")}
+            className={`rounded-xl border px-4 py-3 text-left font-bold transition ${
+              method === "card"
+                ? "border-blue-700 bg-blue-700 text-white"
+                : "border-gray-200 bg-white text-neutral-900"
+            }`}
+          >
+            Card
+          </button>
+        </div>
+
+        {method === "apple-pay" ? (
+          <div className="mt-5">
+            <button
+              type="button"
+              onClick={() => setPaid(true)}
+              className="w-full rounded-xl bg-black px-5 py-4 text-lg font-bold text-white transition hover:bg-neutral-800"
+            >
+              Pay with Apple Pay
+            </button>
+            <p className="mt-3 text-xs leading-5 text-gray-500">
+              Apple Pay availability depends on device, browser, and the live
+              payment provider setup.
+            </p>
+          </div>
+        ) : (
+          <form
+            className="mt-5 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setPaid(true);
+            }}
+          >
+            <label className="block">
+              <span className="text-sm font-semibold text-gray-700">
+                Card number
+              </span>
+              <input
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
+                placeholder="4242 4242 4242 4242"
+                inputMode="numeric"
+                autoComplete="cc-number"
+              />
+            </label>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-semibold text-gray-700">
+                  Expiry
+                </span>
+                <input
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
+                  placeholder="MM / YY"
+                  inputMode="numeric"
+                  autoComplete="cc-exp"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-semibold text-gray-700">CVC</span>
+                <input
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
+                  placeholder="123"
+                  inputMode="numeric"
+                  autoComplete="cc-csc"
+                />
+              </label>
+            </div>
+
+            <label className="block">
+              <span className="text-sm font-semibold text-gray-700">
+                Name on card
+              </span>
+              <input
+                className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-blue-700 focus:ring-2 focus:ring-blue-100"
+                placeholder="Cardholder name"
+                autoComplete="cc-name"
+              />
+            </label>
+
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
+              Demo only: do not enter real card details until this is connected
+              to a certified payment provider.
+            </p>
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-blue-700 px-5 py-4 font-bold text-white transition hover:bg-blue-900"
+            >
+              Pay securely
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function getQuickOptions(message?: string) {
   const text = message?.toLowerCase() ?? "";
@@ -74,11 +312,31 @@ function getQuickOptions(message?: string) {
   return [];
 }
 
-export default function Chatbot() {
+async function readChatResponse(res: Response) {
+  const responseText = await res.text();
+
+  if (!responseText.trim()) {
+    return {} as ChatResponse;
+  }
+
+  try {
+    return JSON.parse(responseText) as ChatResponse;
+  } catch {
+    return {
+      reply: res.ok
+        ? undefined
+        : "Sorry, the chat service returned an invalid response. Please try again.",
+    };
+  }
+}
+
+export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: "Hi, I'm Quicko from QUICK AND EASY. Which emirate or pickup location do you need?",
+      text: customer
+        ? `Hi ${customer.name}, I'm Quicko from QUICK AND EASY. I already have your phone number and Gmail for follow-up. Which emirate or pickup location do you need?`
+        : "Hi, I'm Quicko from QUICK AND EASY. Which emirate or pickup location do you need?",
     },
   ]);
 
@@ -100,7 +358,10 @@ export default function Chatbot() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const sendMessage = async (messageText = input) => {
+  const sendMessage = async (
+    messageText = input,
+    options?: { showPaymentAfterReply?: boolean }
+  ) => {
     if (!messageText.trim() || loading) return;
 
     const userMessage = messageText.trim();
@@ -122,22 +383,36 @@ export default function Chatbot() {
         body: JSON.stringify({
           message: userMessage,
           messages: nextMessages,
+          customer,
         }),
       });
 
-      const data = (await res.json()) as { reply?: string };
+      const data = await readChatResponse(res);
 
       if (!res.ok) {
         throw new Error(data.reply || "Chat request failed");
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          text: data.reply || "Sorry, I could not generate a response.",
-        },
-      ]);
+      setMessages((prev) => {
+        const next: Message[] = [
+          ...prev,
+          {
+            role: "assistant",
+            text: data.reply || "Sorry, I could not generate a response.",
+            cars: data.cars ?? [],
+          },
+        ];
+
+        if (options?.showPaymentAfterReply) {
+          next.push({
+            role: "assistant",
+            text: "Your documents are uploaded. You can now continue with secure payment below.",
+            payment: true,
+          });
+        }
+
+        return next;
+      });
     } catch (error) {
       console.error("Chat request failed:", error);
 
@@ -172,7 +447,9 @@ export default function Chatbot() {
     }
 
     const fileNames = pdfFiles.map((file) => file.name).join(", ");
-    sendMessage(`Uploaded PDF documents: ${fileNames}`);
+    sendMessage(`Uploaded PDF documents: ${fileNames}`, {
+      showPaymentAfterReply: true,
+    });
 
     if (documentInputRef.current) {
       documentInputRef.current.value = "";
@@ -182,7 +459,7 @@ export default function Chatbot() {
   return (
     <section
       id="chatbot"
-      className="bg-[#0b1230] px-4 py-12 text-[#0b0f53] md:px-8"
+      className="bg-black/45 px-4 py-12 text-[#0b0f53] md:px-8"
     >
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 text-center text-white">
@@ -192,75 +469,7 @@ export default function Chatbot() {
           </h2>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
-          <aside className="space-y-5">
-            <div className="rounded-2xl bg-white p-6 shadow-xl">
-              <h3 className="text-2xl font-bold">Booking Steps</h3>
-
-              <div className="mt-8 space-y-7">
-                {bookingSteps.map((step, index) => {
-                  const isCurrent = index === 1;
-                  const isDone = index === 0;
-
-                  return (
-                    <div key={step} className="flex items-center gap-4">
-                      <span
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg font-bold ${
-                          isCurrent
-                            ? "bg-[#08007a] text-white"
-                            : isDone
-                              ? "bg-[#7773bd] text-white"
-                              : "bg-gray-200 text-gray-500"
-                        }`}
-                      >
-                        {index + 1}
-                      </span>
-                      <span
-                        className={`text-lg font-semibold ${
-                          isCurrent
-                            ? "text-[#08007a]"
-                            : isDone
-                              ? "text-[#7773bd]"
-                              : "text-gray-400"
-                        }`}
-                      >
-                        {step}
-                      </span>
-                      {isDone && (
-                        <span className="ml-auto text-2xl text-[#7773bd]">
-                          ✓
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white p-5 shadow-xl">
-              <h3 className="text-2xl font-bold">Exclusive Offers!</h3>
-              <div className="mt-5 rounded-xl bg-gradient-to-r from-slate-100 to-blue-100 p-5">
-                <p className="inline-block bg-red-600 px-2 py-1 text-xs font-bold text-white">
-                  LIMITED STOCK
-                </p>
-                <p className="mt-4 text-3xl font-black text-[#11185f]">
-                  2026 FLAT RATE
-                </p>
-                <p className="mt-1 text-lg font-bold text-[#11185f]">
-                  3, 6 & 12 months
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border-2 border-fuchsia-500 bg-[#2f2f2f] p-6 text-white shadow-xl">
-              <p className="text-xl font-bold text-amber-400">Ahlam S.</p>
-              <p className="mt-2 text-sm leading-relaxed">
-                Reserved <strong>Hyundai Accent 2026</strong> for{" "}
-                <strong>12 months</strong>
-              </p>
-            </div>
-          </aside>
-
+        <div className="mx-auto max-w-6xl">
           <div>
             <div className="min-h-[520px] rounded-3xl bg-[#f7f8fb] p-5 shadow-xl md:p-8">
               <div className="h-[440px] overflow-y-auto pr-1">
@@ -288,6 +497,18 @@ export default function Chatbot() {
                             {line}
                           </p>
                         ))}
+
+                        {msg.role === "assistant" && msg.cars && msg.cars.length > 0 && (
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            {msg.cars.map((car) => (
+                              <ChatCarCard key={car.id} car={car} />
+                            ))}
+                          </div>
+                        )}
+
+                        {msg.role === "assistant" && msg.payment && (
+                          <PaymentGateway />
+                        )}
                       </div>
                     </div>
                   ))}

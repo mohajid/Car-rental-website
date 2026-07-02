@@ -6,7 +6,7 @@ export default function FleetPage() {
     <main className="max-w-7xl mx-auto px-6 py-16">
       <h1 className="text-4xl font-bold">Our Fleet</h1>
       <p className="text-gray-500 mt-2">
-        Explore available demo vehicles.
+        Explore our full rental fleet across sedan, SUV, luxury, electric, sports, economy, and hatchback options.
       </p>
 
       <div className="grid md:grid-cols-3 gap-8 mt-10">

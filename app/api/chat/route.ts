@@ -6,6 +6,12 @@ type ChatMessage = {
   text: string;
 };
 
+type CustomerInfo = {
+  name?: string;
+  phone?: string;
+  email?: string;
+};
+
 function getGeminiApiKey() {
   const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^['"]|['"]$/g, "");
 
@@ -22,12 +28,22 @@ const cityOptions = [
   "Ajman",
 ];
 
-const carTypeOptions = ["Economy", "Sedan", "SUV", "Luxury", "7-seater", "Monthly rental"];
+const carTypeOptions = [
+  "Economy",
+  "Sedan",
+  "SUV",
+  "Luxury",
+  "Electric",
+  "Sports",
+  "Hatchback",
+  "7-seater",
+  "Monthly rental",
+];
 
 const cityAliases: Record<string, string[]> = {
-  "Abu Dhabi": ["abu dhabi", "abudhabi", "أبوظبي", "ابوظبي"],
-  Dubai: ["dubai", "دبي"],
-  Sharjah: ["sharjah", "الشارقة", "شارقة"],
+  "Abu Dhabi": ["abu dhabi", "abudhabi", "auh", "أبوظبي", "ابوظبي"],
+  Dubai: ["dubai", "dxb", "دبي"],
+  Sharjah: ["sharjah", "shj", "الشارقة", "شارقة"],
   "Ras Al-Khaimah": ["ras al-khaimah", "ras al khaimah", "rak", "رأس الخيمة", "راس الخيمة"],
   "Al Ain": ["al ain", "العين"],
   Fujairah: ["fujairah", "الفجيرة", "فجيرة"],
@@ -39,6 +55,9 @@ const carTypeAliases: Record<string, string[]> = {
   Sedan: ["sedan", "صالون", "سيدان"],
   SUV: ["suv", "دفع رباعي", "جيب"],
   Luxury: ["luxury", "فاخرة", "فاخر"],
+  Electric: ["electric", "ev", "tesla"],
+  Sports: ["sports", "sport", "mustang", "porsche"],
+  Hatchback: ["hatchback", "compact"],
   "7-seater": ["7-seater", "7 seater", "seven seater", "سبعة مقاعد", "7 مقاعد"],
   "Monthly rental": ["monthly rental", "monthly", "شهري", "شهرية"],
 };
@@ -57,6 +76,10 @@ const arabicCategoryLabels: Record<string, string> = {
   Economy: "اقتصادية",
   Sedan: "سيدان",
   SUV: "SUV",
+  Luxury: "Luxury",
+  Electric: "Electric",
+  Sports: "Sports",
+  Hatchback: "Hatchback",
 };
 
 function isArabic(text: string) {
@@ -142,26 +165,101 @@ function getDailyBudgetMax(budget?: string) {
   return undefined;
 }
 
+function getCarTransmission(features: string[]) {
+  return features.find((feature) => ["Automatic", "Manual"].includes(feature));
+}
+
+function getCarSeats(features: string[]) {
+  return features.find((feature) => feature.includes("Seats"));
+}
+
+function getCarsMentionedInReply(reply: string) {
+  const normalized = reply.toLowerCase();
+
+  return cars.filter((car) => normalized.includes(car.model.toLowerCase()));
+}
+
+function createChatResponse(reply: string) {
+  return Response.json({
+    reply,
+    cars: getCarsMentionedInReply(reply),
+  });
+}
+
 function getFallbackOptions(location?: string, carType?: string, dailyBudgetMax?: number) {
   const preferredCategory =
-    carType && !["Monthly rental", "Luxury", "7-seater"].includes(carType) ? carType : undefined;
+    carType && !["Monthly rental", "7-seater"].includes(carType) ? carType : undefined;
+  const needsSevenSeats = carType === "7-seater";
 
   const exactMatches = cars.filter(
     (car) =>
-      (!location || car.location.toLowerCase() === location.toLowerCase()) &&
       (!preferredCategory || car.category === preferredCategory) &&
-      (!dailyBudgetMax || car.dailyPrice <= dailyBudgetMax)
+      (!needsSevenSeats || car.features.includes("7 Seats")) &&
+      (!dailyBudgetMax || car.pricing.daily <= dailyBudgetMax) &&
+      car.available
   );
 
   const relaxedMatches = cars.filter(
     (car) =>
       (!preferredCategory || car.category === preferredCategory) &&
-      (!dailyBudgetMax || car.dailyPrice <= dailyBudgetMax)
+      (!needsSevenSeats || car.features.includes("7 Seats")) &&
+      (!dailyBudgetMax || car.pricing.daily <= dailyBudgetMax)
   );
 
-  const options = exactMatches.length > 0 ? exactMatches : relaxedMatches.length > 0 ? relaxedMatches : cars;
+  const availableCars = cars.filter((car) => car.available);
+  const options =
+    exactMatches.length > 0
+      ? exactMatches
+      : relaxedMatches.length > 0
+        ? relaxedMatches
+        : availableCars;
 
   return options.slice(0, 3);
+}
+
+function findSelectedCar(messages: string[], options = cars) {
+  const latestMessage = messages.at(-1)?.toLowerCase() ?? "";
+
+  if (!latestMessage) return undefined;
+
+  const numberedChoice = latestMessage.match(
+    /\b(?:option|car|number|no\.?)?\s*(1|2|3|one|two|three|first|second|third)\b/i
+  )?.[1];
+
+  if (numberedChoice) {
+    const optionIndexMap: Record<string, number> = {
+      "1": 0,
+      one: 0,
+      first: 0,
+      "2": 1,
+      two: 1,
+      second: 1,
+      "3": 2,
+      three: 2,
+      third: 2,
+    };
+    const selectedIndex = optionIndexMap[numberedChoice.toLowerCase()];
+
+    if (selectedIndex !== undefined && options[selectedIndex]) {
+      return options[selectedIndex];
+    }
+  }
+
+  for (const message of [...messages].reverse()) {
+    const normalizedMessage = message.toLowerCase();
+    const selectedCar = options.find((car) => {
+      const model = car.model.toLowerCase();
+      const brand = car.brand.toLowerCase();
+
+      return normalizedMessage.includes(model) || normalizedMessage.includes(brand);
+    });
+
+    if (selectedCar) {
+      return selectedCar;
+    }
+  }
+
+  return undefined;
 }
 
 function formatLocation(location: string, arabic: boolean) {
@@ -215,7 +313,10 @@ function getFaqReply(text: string, arabic: boolean) {
       : "Cross-border driving needs current approval and permits. I cannot confirm it in chat. I'll connect you with our team to check. Which country and dates do you need?";
   }
 
-  if (includesAny(text, ["requirement", "license", "licence", "emirates id", "passport", "visa", "idp", "documents", "eligible", "age", "رخصة", "هوية", "جواز", "تأشيرة", "العمر", "المستندات"])) {
+  if (
+    includesAny(text, ["requirement", "license", "licence", "emirates id", "passport", "visa", "idp", "documents", "eligible", "رخصة", "هوية", "جواز", "تأشيرة", "العمر", "المستندات"]) ||
+    /\b(?:age|minimum age)\b/i.test(text)
+  ) {
     return getRequirementsReply(arabic);
   }
 
@@ -243,34 +344,43 @@ function getFaqReply(text: string, arabic: boolean) {
       : "Cancellation terms depend on the booking type and timing before pickup. I can prepare the request, and the team can confirm the terms before payment. What pickup date do you need?";
   }
 
-  if (includesAny(text, ["airport", "dxb", "auh", "shj", "delivery", "pickup", "drop-off", "مطار", "توصيل", "استلام", "تسليم"])) {
-    return arabic
-      ? "نستطيع ترتيب الاستلام أو التوصيل حسب الإمارة والتوفر، بما في ذلك مطارات DXB وAUH وSHJ عند التأكيد. ما موقع الاستلام والتاريخ؟"
-      : "Pickup or delivery can usually be arranged depending on emirate and availability, including DXB, AUH, and SHJ airports when confirmed. What pickup location and date do you need?";
-  }
-
   return undefined;
 }
 
-function getFallbackReply(message: string, messages: ChatMessage[]) {
+function getPickupDeliveryReply(text: string, arabic: boolean) {
+  if (!includesAny(text, ["airport", "dxb", "auh", "shj", "delivery", "pickup", "drop-off", "مطار", "توصيل", "استلام", "تسليم"])) {
+    return undefined;
+  }
+
+  return arabic
+    ? "نستطيع ترتيب الاستلام أو التوصيل حسب الإمارة والتوفر، بما في ذلك مطارات DXB وAUH وSHJ عند التأكيد. ما موقع الاستلام والتاريخ؟"
+    : "Pickup or delivery can usually be arranged depending on emirate and availability, including DXB, AUH, and SHJ airports when confirmed. What pickup location and date do you need?";
+}
+
+function getFallbackReply(message: string, messages: ChatMessage[], customer?: CustomerInfo) {
   const userMessages = getUserMessages(messages, message);
   const allUserText = userMessages.join(" ");
   const arabic = isArabic(allUserText);
+  const location = findAliasMatch(cityAliases, userMessages) ?? findFirstMatch(cityOptions, userMessages);
+  const duration = findDuration(userMessages);
+  const budget = findBudget(userMessages);
+  const carType = findAliasMatch(carTypeAliases, userMessages) ?? findFirstMatch(carTypeOptions, userMessages);
+  const whatsapp = customer?.phone?.trim() || findWhatsApp(userMessages);
+  const documents = findDocumentUpload(userMessages);
+  const paymentIntent = findPaymentIntent(userMessages);
   const faqReply = getFaqReply(allUserText, arabic);
 
   if (faqReply) {
     return faqReply;
   }
 
-  const location = findAliasMatch(cityAliases, userMessages) ?? findFirstMatch(cityOptions, userMessages);
-  const duration = findDuration(userMessages);
-  const budget = findBudget(userMessages);
-  const carType = findAliasMatch(carTypeAliases, userMessages) ?? findFirstMatch(carTypeOptions, userMessages);
-  const whatsapp = findWhatsApp(userMessages);
-  const documents = findDocumentUpload(userMessages);
-  const paymentIntent = findPaymentIntent(userMessages);
-
   if (!location) {
+    const pickupDeliveryReply = getPickupDeliveryReply(allUserText, arabic);
+
+    if (pickupDeliveryReply) {
+      return pickupDeliveryReply;
+    }
+
     return arabic
       ? "أهلا، أنا Quicko من QUICK AND EASY. في أي إمارة تريد استلام السيارة؟"
       : "Hi, I'm Quicko from QUICK AND EASY. Which emirate or pickup location do you need?";
@@ -296,18 +406,43 @@ function getFallbackReply(message: string, messages: ChatMessage[]) {
 
   const dailyBudgetMax = getDailyBudgetMax(budget);
   const options = getFallbackOptions(location, carType, dailyBudgetMax);
+  const selectedCar = findSelectedCar(userMessages, options);
 
   if (!whatsapp) {
+    if (selectedCar) {
+      return arabic
+        ? [
+            `تمام، سأضع ${selectedCar.model} كخيارك المفضل.`,
+            `السعر حسب القائمة: AED ${selectedCar.pricing.daily}/يوم، AED ${selectedCar.pricing.weekly}/أسبوع، AED ${selectedCar.pricing.monthly}/شهر.`,
+            "",
+            "ما رقم واتساب المناسب ليؤكد الفريق التوفر النهائي ويتابع الحجز؟",
+          ].join("\n")
+        : [
+            `Great, I will note ${selectedCar.model} as your preferred car.`,
+            `Listed rate: AED ${selectedCar.pricing.daily}/day, AED ${selectedCar.pricing.weekly}/week, AED ${selectedCar.pricing.monthly}/month.`,
+            "",
+            "What WhatsApp number should our team use to confirm final availability and continue the booking?",
+          ].join("\n");
+    }
+
     const optionLines = options
       .map((car) => {
         const category = formatCategory(car.category, arabic);
-        const price = arabic ? `AED ${car.dailyPrice}/يوم` : `AED ${car.dailyPrice}/day`;
+        const price = arabic ? `AED ${car.pricing.daily}/يوم` : `AED ${car.pricing.daily}/day`;
+        const transmission = getCarTransmission(car.features) ?? "Rental ready";
+        const seats = getCarSeats(car.features) ?? "Seats listed";
         const features = arabic
-          ? `${car.transmission}, ${car.fuel}, ${car.seats} مقاعد`
-          : `${car.transmission}, ${car.fuel}, ${car.seats} seats`;
-        const availability = arabic ? "التوفر: يحتاج تأكيد" : "Availability: needs confirmation";
+          ? `${transmission}, ${seats}`
+          : `${transmission}, ${seats}`;
+        const availability = car.available
+          ? arabic
+            ? "التوفر: يحتاج تأكيد"
+            : "Availability: needs confirmation"
+          : arabic
+            ? "التوفر: غير متاح حاليا"
+            : "Availability: unavailable";
 
-        return `- ${car.name} | ${category} | ${price} | ${features} | ${availability}`;
+        return `- ${car.model} | ${category} | ${price} | ${features} | ${availability}`;
       })
       .join("\n");
 
@@ -331,7 +466,9 @@ function getFallbackReply(message: string, messages: ChatMessage[]) {
   if (!documents) {
     return arabic
       ? [
-          "تمام. قبل الدفع، نحتاج المستندات بصيغة PDF للتحقق:",
+          selectedCar
+            ? `تمام، تم اختيار ${selectedCar.model}. قبل الدفع، نحتاج المستندات بصيغة PDF للتحقق:`
+            : "تمام. قبل الدفع، نحتاج المستندات بصيغة PDF للتحقق:",
           "- رخصة القيادة",
           "- الهوية الإماراتية للمقيمين، أو جواز السفر + التأشيرة للسياح",
           "- رخصة قيادة دولية إذا كانت مطلوبة حسب الجنسية",
@@ -339,7 +476,9 @@ function getFallbackReply(message: string, messages: ChatMessage[]) {
           "يرجى رفع الملفات بصيغة PDF فقط. بعد التحقق ننتقل إلى رابط الدفع الآمن.",
         ].join("\n")
       : [
-          "Great. Before payment, please upload the required documents as PDF:",
+          selectedCar
+            ? `Great, ${selectedCar.model} is noted. Before payment, please upload the required documents as PDF:`
+            : "Great. Before payment, please upload the required documents as PDF:",
           "- Driving license",
           "- Emirates ID for UAE residents, or passport + visa for tourists",
           "- International Driving Permit if required for your nationality",
@@ -351,19 +490,20 @@ function getFallbackReply(message: string, messages: ChatMessage[]) {
   if (paymentIntent) {
     return arabic
       ? "تم استلام المستندات للتحقق. الخطوة التالية هي الدفع عبر رابط دفع آمن فقط. لا ترسل بيانات البطاقة في الدردشة. هل تريد إرسال الطلب للفريق لإصدار رابط الدفع؟"
-      : "Documents are received for verification. The next step is payment through a secure checkout link only. Do not share card details in chat. Shall I send this request to the team to issue the payment link?";
+      : "Documents are received for verification. The next step is payment through the secure checkout panel in this chat. Do not type card details as a chat message. Please use the payment panel when it appears.";
   }
 
   return arabic
     ? "تم استلام المستندات للتحقق. الحجز لا يكون نهائيا إلا بعد الموافقة والدفع عبر الرابط الآمن. هل تريد المتابعة إلى الدفع الآمن؟"
-    : "Documents are received for verification. The booking is not final until approval and secure payment are completed. Would you like to proceed to secure checkout?";
+    : "Documents are received for verification. The booking is not final until approval and secure payment are completed. Please use the secure checkout panel in this chat when you are ready.";
 }
 
 export async function POST(req: Request) {
   try {
-    const { message, messages = [] } = (await req.json()) as {
+    const { message, messages = [], customer } = (await req.json()) as {
       message: string;
       messages?: ChatMessage[];
+      customer?: CustomerInfo;
     };
 
     if (!message?.trim()) {
@@ -373,9 +513,7 @@ export async function POST(req: Request) {
     const geminiApiKey = getGeminiApiKey();
 
     if (!geminiApiKey) {
-      return Response.json({
-        reply: getFallbackReply(message, messages),
-      });
+      return createChatResponse(getFallbackReply(message, messages, customer));
     }
 
     const ai = new GoogleGenAI({
@@ -383,6 +521,14 @@ export async function POST(req: Request) {
     });
 
     const carData = JSON.stringify(cars);
+    const customerContext = customer?.phone
+      ? [
+          `Name: ${customer.name || "Provided before chat"}`,
+          `Phone/WhatsApp: ${customer.phone}`,
+          `Gmail: ${customer.email || "Provided before chat"}`,
+          "These contact details were collected before chat. Do not ask for the user's name, phone number, WhatsApp number, or Gmail again unless they ask to change it.",
+        ].join("\n")
+      : "No pre-chat customer contact details were provided.";
     const conversation = messages
       .map((item) => `${item.role === "assistant" ? "Assistant" : "User"}: ${item.text}`)
       .join("\n");
@@ -419,26 +565,32 @@ Rules:
   Name | Category | Price/day | Key features | Availability
 - Availability must be "needs confirmation" unless live availability is explicitly provided.
 - Do not confirm a booking as final. Say: "Here is your booking summary. Shall I proceed?" or equivalent.
-- Do not take payment card details in chat. Direct users to the secure checkout flow.
+- Do not accept payment card details as plain chat messages. Direct users to the embedded secure checkout panel.
 - Do not proceed to payment until the user has uploaded or confirmed the required PDF documents.
-- If the user tries to type card details or asks to pay in chat, stop them and direct them to secure checkout.
+- If the user tries to type card details as chat text, stop them and direct them to the secure checkout panel.
 - Do not give legal or insurance advice beyond policy-level explanations.
 - Do not promise cross-border driving to Oman, KSA, or elsewhere. Escalate it to a human agent.
 - Hand off to a human for complaints, accidents, disputes, refunds, cross-border authorization, corporate/long-term leasing, below-minimum-age exceptions, explicit human requests, or anything uncertain.
 - When escalating, say plainly what happens next, without inventing a response time.
+- If customer contact details are provided below, do not ask for name, WhatsApp/phone, or Gmail again.
 
 Conversation flow:
 1. If trip details are missing, ask for pickup date/duration, pickup/drop-off location, and vehicle preference.
 2. Present 2-3 relevant car options with clear AED pricing from the car list.
-3. Ask about insurance tier and add-ons.
-4. Confirm eligibility documents based on residency/nationality status.
-5. Ask for required documents as PDF uploads.
-6. Summarize estimated cost and next steps before secure checkout/human handoff.
+3. If the user selects a car by name, brand, or option number, acknowledge that exact car and move forward. Do not show the same option list again.
+4. Ask for the user's WhatsApp number only if it is missing from both the customer context and the chat.
+5. Ask about insurance tier and add-ons.
+6. Confirm eligibility documents based on residency/nationality status.
+7. Ask for required documents as PDF uploads.
+8. Summarize estimated cost and next steps before secure checkout/human handoff.
 
 Keep most replies under 90 words. End most turns with a clear next-step question.
 
 Car list:
 ${carData}
+
+Customer context:
+${customerContext}
 
 Conversation so far:
 ${conversation}
@@ -448,15 +600,11 @@ ${message}
       `,
       });
 
-      return Response.json({
-        reply: response.text || getFallbackReply(message, messages),
-      });
+      return createChatResponse(response.text || getFallbackReply(message, messages, customer));
     } catch (error) {
       console.error("Gemini chat failed, using fallback:", error);
 
-      return Response.json({
-        reply: getFallbackReply(message, messages),
-      });
+      return createChatResponse(getFallbackReply(message, messages, customer));
     }
   } catch (error) {
     console.error("Chat API error:", error);

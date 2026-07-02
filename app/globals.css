@@ -20,7 +20,51 @@
 }
 
 body {
-  background: var(--background);
+  background: #05070d;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+.page-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.page-background__image {
+  position: absolute;
+  inset: 0;
+  background-image: url("/bacgroundtemp.jpg");
+  background-position: center;
+  background-size: cover;
+  transform: scale(1.02);
+  transition:
+    filter 450ms ease,
+    transform 450ms ease;
+}
+
+.page-background__shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 48%) 0%, rgb(0 0 0 / 38%) 42%, rgb(0 0 0 / 62%) 100%),
+    rgb(0 0 0 / 16%);
+}
+
+body.background-blurred .page-background__image {
+  filter: blur(12px);
+  transform: scale(1.08);
+}
+
+main,
+footer {
+  position: relative;
+  z-index: 1;
 }

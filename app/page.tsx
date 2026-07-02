@@ -1,13 +1,13 @@
 import Hero from "@/components/hero";
 import FeaturedCars from "@/components/featurecar";
-import Chatbot from "@/components/chatbot";
+import ProcedureSection from "@/components/procedure-section";
 
 export default function Home() {
   return (
     <main>
       <Hero />
       <FeaturedCars />
-      <Chatbot />
+      <ProcedureSection />
     </main>
   );
 }
