@@ -13,6 +13,7 @@ type Message = {
 type ChatResponse = {
   reply?: string;
   cars?: Car[];
+  payment?: boolean;
 };
 
 export type CustomerInfo = {
@@ -142,9 +143,7 @@ function PaymentGateway() {
       <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
         <p className="text-lg font-bold">Payment request received</p>
         <p className="mt-2 text-sm leading-6">
-          This demo checkout is complete. In production, this panel should be
-          connected to Stripe, Checkout.com, Network, Telr, or your approved
-          UAE payment provider before charging real cards.
+          
         </p>
       </div>
     );
@@ -358,10 +357,7 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const sendMessage = async (
-    messageText = input,
-    options?: { showPaymentAfterReply?: boolean }
-  ) => {
+  const sendMessage = async (messageText = input) => {
     if (!messageText.trim() || loading) return;
 
     const userMessage = messageText.trim();
@@ -403,10 +399,10 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
           },
         ];
 
-        if (options?.showPaymentAfterReply) {
+        if (data.payment) {
           next.push({
             role: "assistant",
-            text: "Your documents are uploaded. You can now continue with secure payment below.",
+            text: "Your booking details and documents are ready for review. You can now continue with secure payment below.",
             payment: true,
           });
         }
@@ -447,9 +443,7 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
     }
 
     const fileNames = pdfFiles.map((file) => file.name).join(", ");
-    sendMessage(`Uploaded PDF documents: ${fileNames}`, {
-      showPaymentAfterReply: true,
-    });
+    sendMessage(`Uploaded PDF documents: ${fileNames}`);
 
     if (documentInputRef.current) {
       documentInputRef.current.value = "";

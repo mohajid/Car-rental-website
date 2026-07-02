@@ -45,7 +45,10 @@ export default function ProcedureSection({
   compact?: boolean;
 }) {
   return (
-    <section className={`mx-auto max-w-7xl px-6 ${compact ? "py-16" : "pb-16"}`}>
+    <section
+      id={compact ? undefined : "procedures"}
+      className={`mx-auto max-w-7xl px-6 ${compact ? "py-16" : "pb-16"}`}
+    >
       <div className="overflow-hidden rounded-3xl bg-white text-neutral-950 shadow-2xl">
         <div className="grid gap-8 bg-gradient-to-br from-blue-950 to-blue-700 p-8 text-white md:grid-cols-[1fr_auto] md:p-10">
           <div>

@@ -38,12 +38,12 @@ body {
   pointer-events: none;
 }
 
-.page-background__image {
+.page-background__video {
   position: absolute;
   inset: 0;
-  background-image: url("/bacgroundtemp.jpg");
-  background-position: center;
-  background-size: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   transform: scale(1.02);
   transition:
     filter 450ms ease,
@@ -58,7 +58,7 @@ body {
     rgb(0 0 0 / 16%);
 }
 
-body.background-blurred .page-background__image {
+body.background-blurred .page-background__video {
   filter: blur(12px);
   transform: scale(1.08);
 }

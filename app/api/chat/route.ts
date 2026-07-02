@@ -136,6 +136,69 @@ function findWhatsApp(messages: string[]) {
   return messages.find((text) => /(?:\+?\d[\s-]?){7,}/.test(text));
 }
 
+function findResidencyStatus(messages: string[]) {
+  return messages.find((text) =>
+    /\b(uae resident|resident|gcc national|gcc|tourist|visitor|visit visa)\b/i.test(text)
+  );
+}
+
+function findInsuranceAndAddOnsPreference(messages: string[]) {
+  return messages.find((text) =>
+    /\b(basic|standard|full coverage|full insurance|upgraded coverage|zero excess|insurance upgrade|cdw|child seat|baby seat|gps|additional driver|home delivery|car delivery|deliver to|delivery service|drop-off service|drop off service|no add-ons|no addons|no extras|none needed|no thanks|ask the team|confirm insurance|confirm it)\b/i.test(
+      text
+    )
+  );
+}
+
+function isAffirmativeInsuranceAnswer(text: string) {
+  return /\b(yes|yeah|yep|sure|ok|okay|please|confirm|ask them|ask team|do that|go ahead)\b/i.test(
+    text
+  );
+}
+
+function isInsurancePrompt(text: string) {
+  return /\b(insurance|cdw|zero excess|add-ons|addons|extras|child seat|gps|additional driver|delivery)\b/i.test(
+    text
+  );
+}
+
+function hasInsuranceAndAddOnsPreference(
+  userMessages: string[],
+  currentMessage: string,
+  messages?: ChatMessage[]
+) {
+  if (findInsuranceAndAddOnsPreference(userMessages)) {
+    return true;
+  }
+
+  const lastAssistantMessage = [...(messages ?? [])]
+    .reverse()
+    .find((item) => item.role === "assistant")?.text;
+  const conversation = [...(messages ?? [])];
+
+  if (conversation.at(-1)?.text.trim() !== currentMessage.trim()) {
+    conversation.push({ role: "user", text: currentMessage });
+  }
+
+  const answeredPreviousInsurancePrompt = conversation.some((item, index) => {
+    const nextItem = conversation[index + 1];
+
+    return (
+      item.role === "assistant" &&
+      isInsurancePrompt(item.text) &&
+      nextItem?.role === "user" &&
+      isAffirmativeInsuranceAnswer(nextItem.text)
+    );
+  });
+
+  return Boolean(
+    answeredPreviousInsurancePrompt ||
+    lastAssistantMessage &&
+      isInsurancePrompt(lastAssistantMessage) &&
+      isAffirmativeInsuranceAnswer(currentMessage)
+  );
+}
+
 function findDocumentUpload(messages: string[]) {
   return messages.find((text) =>
     /\b(uploaded pdf documents|documents uploaded|pdf documents|driving license pdf|driving licence pdf|emirates id pdf|passport pdf|visa pdf)\b/i.test(
@@ -179,11 +242,66 @@ function getCarsMentionedInReply(reply: string) {
   return cars.filter((car) => normalized.includes(car.model.toLowerCase()));
 }
 
-function createChatResponse(reply: string) {
+function getPaymentReadiness(messages: ChatMessage[], currentMessage: string, customer?: CustomerInfo) {
+  const userMessages = getUserMessages(messages, currentMessage);
+  const location = findAliasMatch(cityAliases, userMessages) ?? findFirstMatch(cityOptions, userMessages);
+  const duration = findDuration(userMessages);
+  const budget = findBudget(userMessages);
+  const carType = findAliasMatch(carTypeAliases, userMessages) ?? findFirstMatch(carTypeOptions, userMessages);
+  const whatsapp = customer?.phone?.trim() || findWhatsApp(userMessages);
+  const residencyStatus = findResidencyStatus(userMessages);
+  const insuranceAndAddOns = hasInsuranceAndAddOnsPreference(userMessages, currentMessage, messages);
+  const documents = findDocumentUpload(userMessages);
+  const paymentIntent = findPaymentIntent(userMessages);
+  const dailyBudgetMax = getDailyBudgetMax(budget);
+  const options =
+    location && carType && budget ? getFallbackOptions(location, carType, dailyBudgetMax) : cars;
+  const selectedCar = findSelectedCar(userMessages, options);
+
+  return Boolean(
+    location &&
+      duration &&
+      budget &&
+      carType &&
+      selectedCar &&
+      whatsapp &&
+      residencyStatus &&
+      insuranceAndAddOns &&
+      documents &&
+      paymentIntent
+  );
+}
+
+function createChatResponse(reply: string, payment = false) {
   return Response.json({
     reply,
     cars: getCarsMentionedInReply(reply),
+    payment,
   });
+}
+
+function getNonLoopingReply(
+  reply: string,
+  message: string,
+  messages: ChatMessage[],
+  customer?: CustomerInfo
+) {
+  const userMessages = getUserMessages(messages, message);
+  const answeredInsuranceQuestion = hasInsuranceAndAddOnsPreference(
+    userMessages,
+    message,
+    messages
+  );
+  const repeatsInsurancePrompt =
+    /insurance is usually basic cdw|should i ask .*confirm insurance|would you like basic insurance|upgraded\/full zero-excess/i.test(
+      reply
+    );
+
+  if (answeredInsuranceQuestion && repeatsInsurancePrompt) {
+    return getFallbackReply(message, messages, customer);
+  }
+
+  return reply;
 }
 
 function getFallbackOptions(location?: string, carType?: string, dailyBudgetMax?: number) {
@@ -218,35 +336,32 @@ function getFallbackOptions(location?: string, carType?: string, dailyBudgetMax?
 }
 
 function findSelectedCar(messages: string[], options = cars) {
-  const latestMessage = messages.at(-1)?.toLowerCase() ?? "";
-
-  if (!latestMessage) return undefined;
-
-  const numberedChoice = latestMessage.match(
-    /\b(?:option|car|number|no\.?)?\s*(1|2|3|one|two|three|first|second|third)\b/i
-  )?.[1];
-
-  if (numberedChoice) {
-    const optionIndexMap: Record<string, number> = {
-      "1": 0,
-      one: 0,
-      first: 0,
-      "2": 1,
-      two: 1,
-      second: 1,
-      "3": 2,
-      three: 2,
-      third: 2,
-    };
-    const selectedIndex = optionIndexMap[numberedChoice.toLowerCase()];
-
-    if (selectedIndex !== undefined && options[selectedIndex]) {
-      return options[selectedIndex];
-    }
-  }
+  const optionIndexMap: Record<string, number> = {
+    "1": 0,
+    one: 0,
+    first: 0,
+    "2": 1,
+    two: 1,
+    second: 1,
+    "3": 2,
+    three: 2,
+    third: 2,
+  };
 
   for (const message of [...messages].reverse()) {
     const normalizedMessage = message.toLowerCase();
+    const numberedChoice = normalizedMessage.match(
+      /\b(?:option|car|number|no\.?)?\s*(1|2|3|one|two|three|first|second|third)\b/i
+    )?.[1];
+
+    if (numberedChoice) {
+      const selectedIndex = optionIndexMap[numberedChoice.toLowerCase()];
+
+      if (selectedIndex !== undefined && options[selectedIndex]) {
+        return options[selectedIndex];
+      }
+    }
+
     const selectedCar = options.find((car) => {
       const model = car.model.toLowerCase();
       const brand = car.brand.toLowerCase();
@@ -366,9 +481,11 @@ function getFallbackReply(message: string, messages: ChatMessage[], customer?: C
   const budget = findBudget(userMessages);
   const carType = findAliasMatch(carTypeAliases, userMessages) ?? findFirstMatch(carTypeOptions, userMessages);
   const whatsapp = customer?.phone?.trim() || findWhatsApp(userMessages);
+  const residencyStatus = findResidencyStatus(userMessages);
+  const insuranceAndAddOns = hasInsuranceAndAddOnsPreference(userMessages, message, messages);
   const documents = findDocumentUpload(userMessages);
   const paymentIntent = findPaymentIntent(userMessages);
-  const faqReply = getFaqReply(allUserText, arabic);
+  const faqReply = insuranceAndAddOns ? undefined : getFaqReply(message, arabic);
 
   if (faqReply) {
     return faqReply;
@@ -463,6 +580,52 @@ function getFallbackReply(message: string, messages: ChatMessage[], customer?: C
     ].join("\n");
   }
 
+  if (!selectedCar) {
+    const optionLines = options
+      .map((car, index) => {
+        const category = formatCategory(car.category, arabic);
+        const price = arabic ? `AED ${car.pricing.daily}/ÙŠÙˆÙ…` : `AED ${car.pricing.daily}/day`;
+        const transmission = getCarTransmission(car.features) ?? "Rental ready";
+        const seats = getCarSeats(car.features) ?? "Seats listed";
+        const availability = car.available
+          ? arabic
+            ? "Ø§Ù„ØªÙˆÙØ±: ÙŠØ­ØªØ§Ø¬ ØªØ£ÙƒÙŠØ¯"
+            : "Availability: needs confirmation"
+          : arabic
+            ? "Ø§Ù„ØªÙˆÙØ±: ØºÙŠØ± Ù…ØªØ§Ø­ Ø­Ø§Ù„ÙŠØ§"
+            : "Availability: unavailable";
+
+        return `${index + 1}. ${car.model} | ${category} | ${price} | ${transmission}, ${seats} | ${availability}`;
+      })
+      .join("\n");
+
+    return arabic
+      ? [
+          "Ù‚Ø¨Ù„ Ø±ÙØ¹ Ø§Ù„Ù…Ø³ØªÙ†Ø¯Ø§Øª Ø£Ùˆ Ø§Ù„Ø¯ÙØ¹ØŒ ÙŠØ±Ø¬Ù‰ Ø§Ø®ØªÙŠØ§Ø± Ø§Ù„Ø³ÙŠØ§Ø±Ø© Ø§Ù„Ù…ÙØ¶Ù„Ø©:",
+          optionLines,
+          "",
+          "Ø£ÙŠ Ø®ÙŠØ§Ø± ØªØ±ÙŠØ¯ØŸ",
+        ].join("\n")
+      : [
+          "Before documents or payment, please choose the car you prefer:",
+          optionLines,
+          "",
+          "Which option would you like to continue with?",
+        ].join("\n");
+  }
+
+  if (!residencyStatus) {
+    return arabic
+      ? "Ù‚Ø¨Ù„ Ø±ÙØ¹ Ø§Ù„Ù…Ø³ØªÙ†Ø¯Ø§ØªØŒ Ù‡Ù„ Ø£Ù†Øª Ù…Ù‚ÙŠÙ… ÙÙŠ Ø§Ù„Ø¥Ù…Ø§Ø±Ø§ØªØŒ Ù…ÙˆØ§Ø·Ù† Ø®Ù„ÙŠØ¬ÙŠØŒ Ø£Ù… Ø³Ø§Ø¦Ø­ØŸ"
+      : "Before documents, are you a UAE resident, GCC national, or tourist? This tells us which PDF files are required.";
+  }
+
+  if (!insuranceAndAddOns) {
+    return arabic
+      ? "Ù‡Ù„ ØªØ±ÙŠØ¯ Ø§Ù„ØªØ£Ù…ÙŠÙ† Ø§Ù„Ø£Ø³Ø§Ø³ÙŠ Ø£Ùˆ ØªØºØ·ÙŠØ© Ø£Ø¹Ù„Ù‰ØŸ ÙˆÙ‡Ù„ ØªØ­ØªØ§Ø¬ Ø£ÙŠ Ø¥Ø¶Ø§ÙØ§Øª Ù…Ø«Ù„ Ù…Ù‚Ø¹Ø¯ Ø·ÙÙ„ØŒ Ø³Ø§Ø¦Ù‚ Ø¥Ø¶Ø§ÙÙŠØŒ GPSØŒ Ø£Ùˆ ØªÙˆØµÙŠÙ„ØŸ"
+      : "Would you like basic insurance or an upgraded/full coverage option? Do you need any add-ons such as a child seat, GPS, additional driver, or delivery?";
+  }
+
   if (!documents) {
     return arabic
       ? [
@@ -513,7 +676,8 @@ export async function POST(req: Request) {
     const geminiApiKey = getGeminiApiKey();
 
     if (!geminiApiKey) {
-      return createChatResponse(getFallbackReply(message, messages, customer));
+      const reply = getFallbackReply(message, messages, customer);
+      return createChatResponse(reply, getPaymentReadiness(messages, message, customer));
     }
 
     const ai = new GoogleGenAI({
@@ -566,7 +730,8 @@ Rules:
 - Availability must be "needs confirmation" unless live availability is explicitly provided.
 - Do not confirm a booking as final. Say: "Here is your booking summary. Shall I proceed?" or equivalent.
 - Do not accept payment card details as plain chat messages. Direct users to the embedded secure checkout panel.
-- Do not proceed to payment until the user has uploaded or confirmed the required PDF documents.
+- Do not proceed to payment until pickup/duration, location, vehicle preference, selected car, contact details, residency/tourist status, insurance/add-ons preference, and required PDF documents are all collected.
+- Once the user answers the insurance/add-ons question, even with "yes", "basic", "full coverage", "no add-ons", or "ask the team to confirm", do not repeat the same insurance question. Move to the next missing booking step.
 - If the user tries to type card details as chat text, stop them and direct them to the secure checkout panel.
 - Do not give legal or insurance advice beyond policy-level explanations.
 - Do not promise cross-border driving to Oman, KSA, or elsewhere. Escalate it to a human agent.
@@ -600,11 +765,18 @@ ${message}
       `,
       });
 
-      return createChatResponse(response.text || getFallbackReply(message, messages, customer));
+      const reply = getNonLoopingReply(
+        response.text || getFallbackReply(message, messages, customer),
+        message,
+        messages,
+        customer
+      );
+      return createChatResponse(reply, getPaymentReadiness(messages, message, customer));
     } catch (error) {
       console.error("Gemini chat failed, using fallback:", error);
 
-      return createChatResponse(getFallbackReply(message, messages, customer));
+      const reply = getFallbackReply(message, messages, customer);
+      return createChatResponse(reply, getPaymentReadiness(messages, message, customer));
     }
   } catch (error) {
     console.error("Chat API error:", error);
