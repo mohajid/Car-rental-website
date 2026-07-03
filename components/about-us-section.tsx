@@ -44,6 +44,7 @@ export default function AboutUsSection() {
               </p>
             </article>
           ))}
+          <p>Since 2014, part of a reputable group of companies.</p>
         </div>
       </div>
     </section>

@@ -1,7 +1,23 @@
+"use client";
+
 import type { Car } from "@/data/cars";
 import Image from "next/image";
+import { useState } from "react";
+
+function getFallbackCarImage(category: string) {
+  if (category === "SUV" || category === "7-seater") {
+    return "/cars/creta.svg";
+  }
+
+  if (category === "Sedan" || category === "Luxury") {
+    return "/cars/sunny.svg";
+  }
+
+  return "/cars/yaris.svg";
+}
 
 export default function CarCard({ car }: { car: Car }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const transmission = car.features.find((feature) =>
     ["Automatic", "Manual"].includes(feature)
   );
@@ -14,11 +30,12 @@ export default function CarCard({ car }: { car: Car }) {
     <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
       <div className="relative">
         <Image
-          src={car.image}
+          src={imageFailed ? getFallbackCarImage(car.category) : car.image}
           alt={`${car.year} ${car.model}`}
           width={640}
           height={360}
           className="w-full h-52 object-cover"
+          onError={() => setImageFailed(true)}
         />
         <span
           className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold ${
