@@ -10,9 +10,9 @@ export default function Navbar() {
 
         <div className="hidden md:flex gap-8 text-sm font-medium text-white">
           <Link href="/">Home</Link>
-          <Link href="/fleet">Fleet</Link>
-          <Link href="/#procedures">Procedures</Link>
           <Link href="/#about-us">About Us</Link>
+          <Link href="/fleet">Fleet</Link>
+          <Link href="/#procedures">Procedures</Link>  
           <Link href="/#contact-us">Contact</Link>
         </div>
 
