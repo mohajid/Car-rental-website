@@ -82,9 +82,7 @@ export default function ProcedureSection({
                   Upload all four documents for the fastest verification.
                 </p>
               </div>
-              <span className="w-fit rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-800">
-                Recommended path
-              </span>
+              
             </div>
 
             <div className="mt-8 grid gap-6 md:grid-cols-2">

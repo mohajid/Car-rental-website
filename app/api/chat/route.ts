@@ -209,7 +209,16 @@ function findDocumentUpload(messages: string[]) {
 
 function findPaymentIntent(messages: string[]) {
   return messages.find((text) =>
-    /\b(pay|payment|checkout|secure checkout|proceed|card|deposit)\b/i.test(text)
+    /\b(pay|payment|checkout|secure checkout|proceed|card|cash|deposit)\b/i.test(text)
+  );
+}
+
+function isPaymentMethodQuestion(text: string) {
+  return (
+    /\b(cash|cashh|card|crd|credit card|debit card|apple pay|google pay|payment|paymnt|payment method|paymnt methd|pay in cash|pay cash|pay by cash|py by crd|deposit|deposite|security deposit|advance payment)\b/i.test(
+      text
+    ) ||
+    /\b(?:do|can|should|must|need)\s+i\s+(?:need\s+to\s+)?pay\b/i.test(text)
   );
 }
 
@@ -410,6 +419,12 @@ function getRequirementsReply(arabic: boolean) {
 }
 
 function getFaqReply(text: string, arabic: boolean) {
+  if (isPaymentMethodQuestion(text)) {
+    return arabic
+      ? "Payment is handled through the secure checkout panel/link. Please do not send card details in chat. Cash may be possible only if the team confirms it for your booking. Any security deposit or advance amount depends on the car and rental duration, so the team confirms it before you pay."
+      : "You do not need to type card details in chat. Final payment is handled through the secure checkout panel/link. Cash may be possible only if the team confirms it for your booking. Any security deposit or advance amount depends on the car and rental duration, so the team confirms it before you pay.";
+  }
+
   if (includesAny(text, ["human", "agent", "person", "call me", "اتصل", "موظف", "انسان"])) {
     return arabic
       ? "سأحوّل طلبك إلى أحد أعضاء الفريق. سيستلمون تفاصيل المحادثة ويردون عليك في أقرب وقت. ما رقم واتساب المناسب؟"
@@ -485,7 +500,7 @@ function getFallbackReply(message: string, messages: ChatMessage[], customer?: C
   const insuranceAndAddOns = hasInsuranceAndAddOnsPreference(userMessages, message, messages);
   const documents = findDocumentUpload(userMessages);
   const paymentIntent = findPaymentIntent(userMessages);
-  const faqReply = insuranceAndAddOns ? undefined : getFaqReply(message, arabic);
+  const faqReply = getFaqReply(message, arabic);
 
   if (faqReply) {
     return faqReply;
@@ -673,7 +688,10 @@ export async function POST(req: Request) {
       return Response.json({ reply: "Please type a message so I can help with your rental." });
     }
 
-    const geminiApiKey = getGeminiApiKey();
+    const forceFallback =
+      process.env.NODE_ENV !== "production" &&
+      req.headers.get("x-quicko-simulation") === "fallback";
+    const geminiApiKey = forceFallback ? undefined : getGeminiApiKey();
 
     if (!geminiApiKey) {
       const reply = getFallbackReply(message, messages, customer);
@@ -709,6 +727,7 @@ Language and tone:
 - Use short sentences and scannable bullets.
 - Use AED for all pricing. Never use USD.
 - Do not assume the user knows UAE rental rules.
+- If the user asks a direct FAQ, answer it first before asking for pickup location, dates, or vehicle preference.
 
 Core capabilities:
 - Help users find cars based on trip dates, pickup/drop-off location, budget, vehicle type, and special needs such as child seat, unlimited mileage, or delivery.
@@ -730,6 +749,7 @@ Rules:
 - Availability must be "needs confirmation" unless live availability is explicitly provided.
 - Do not confirm a booking as final. Say: "Here is your booking summary. Shall I proceed?" or equivalent.
 - Do not accept payment card details as plain chat messages. Direct users to the embedded secure checkout panel.
+- If the user asks whether they need to pay in cash, can pay cash/card, or asks about payment methods, answer directly: final payment is through the secure checkout panel/link, cash is only possible if the team confirms it for that booking, and deposits/advance amounts depend on the car and duration.
 - Do not proceed to payment until pickup/duration, location, vehicle preference, selected car, contact details, residency/tourist status, insurance/add-ons preference, and required PDF documents are all collected.
 - Once the user answers the insurance/add-ons question, even with "yes", "basic", "full coverage", "no add-ons", or "ask the team to confirm", do not repeat the same insurance question. Move to the next missing booking step.
 - If the user tries to type card details as chat text, stop them and direct them to the secure checkout panel.

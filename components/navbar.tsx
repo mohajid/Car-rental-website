@@ -12,7 +12,8 @@ export default function Navbar() {
           <Link href="/">Home</Link>
           <Link href="/fleet">Fleet</Link>
           <Link href="/#procedures">Procedures</Link>
-          <Link href="/contact">Contact</Link>
+          <Link href="/#about-us">About Us</Link>
+          <Link href="/#contact-us">Contact</Link>
         </div>
 
         <Link
