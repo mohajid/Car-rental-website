@@ -3,6 +3,7 @@
 import type { Car } from "@/data/cars";
 import Image from "next/image";
 import { useState } from "react";
+import BookingModal from "./BookingModal";
 
 function getFallbackCarImage(category: string) {
   if (category === "SUV" || category === "7-seater") {
@@ -18,6 +19,7 @@ function getFallbackCarImage(category: string) {
 
 export default function CarCard({ car }: { car: Car }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
   const transmission = car.features.find((feature) =>
     ["Automatic", "Manual"].includes(feature)
   );
@@ -81,6 +83,7 @@ export default function CarCard({ car }: { car: Car }) {
             <p className="text-xs text-gray-500">AED {car.pricing.monthly}/month</p>
           </div>
           <button
+            onClick={() => setIsBookingOpen(true)}
             className="bg-blue-700 text-white px-4 py-2 rounded-full disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
             disabled={!car.available}
           >
@@ -88,6 +91,9 @@ export default function CarCard({ car }: { car: Car }) {
           </button>
         </div>
       </div>
+       {isBookingOpen && (
+        <BookingModal car={car} onClose={() => setIsBookingOpen(false)} />
+      )}
     </div>
   );
 }

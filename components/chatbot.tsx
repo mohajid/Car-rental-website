@@ -8,12 +8,14 @@ type Message = {
   text: string;
   cars?: Car[];
   payment?: boolean;
+  options?: string[];
 };
 
 type ChatResponse = {
   reply?: string;
   cars?: Car[];
   payment?: boolean;
+  options?: string[];
 };
 
 export type CustomerInfo = {
@@ -21,35 +23,6 @@ export type CustomerInfo = {
   phone: string;
   email: string;
 };
-
-const cityOptions = [
-  "Abu Dhabi",
-  "Dubai",
-  "Sharjah",
-  "Ras Al-Khaimah",
-  "Al Ain",
-  "Fujairah",
-  "Ajman",
-];
-
-const durationOptions = [
-  "1 Day",
-  "3 Days",
-  "1 Week",
-  "1 Month",
-  "3 Months",
-  "6 Months",
-  "12 Months",
-];
-
-const budgetOptions = [
-  "Under AED 100/day",
-  "AED 100-200/day",
-  "AED 200-350/day",
-  "Monthly budget",
-];
-
-const carTypeOptions = ["Economy", "Sedan", "SUV", "Luxury", "7-seater", "Monthly rental"];
 
 function getFallbackCarImage(category: string) {
   if (category === "SUV" || category === "7-seater") {
@@ -143,7 +116,9 @@ function PaymentGateway() {
       <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
         <p className="text-lg font-bold">Payment request received</p>
         <p className="mt-2 text-sm leading-6">
-          
+          Thanks. This demo checkout has recorded the request. In production,
+          this should connect to your certified payment provider before taking
+          real card payments.
         </p>
       </div>
     );
@@ -263,8 +238,9 @@ function PaymentGateway() {
             </label>
 
             <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
-              Demo only: do not enter real card details until this is connected
-              to a certified payment provider.
+              Demo only: this form is a payment gateway mockup. Connect Stripe,
+              Checkout.com, Network, Telr, or another certified provider before
+              collecting real card details.
             </p>
 
             <button
@@ -278,37 +254,6 @@ function PaymentGateway() {
       </div>
     </div>
   );
-}
-
-function getQuickOptions(message?: string) {
-  const text = message?.toLowerCase() ?? "";
-
-  if (text.includes("where") || text.includes("city") || text.includes("pick up")) {
-    return cityOptions;
-  }
-
-  if (text.includes("how long") || text.includes("duration") || text.includes("dates")) {
-    return durationOptions;
-  }
-
-  if (text.includes("budget") || text.includes("price")) {
-    return budgetOptions;
-  }
-
-  if (text.includes("secure checkout") || text.includes("payment")) {
-    return ["Proceed to secure payment"];
-  }
-
-  if (
-    text.includes("vehicle type") ||
-    text.includes("car type") ||
-    text.includes("type of car") ||
-    text.includes("prefer")
-  ) {
-    return carTypeOptions;
-  }
-
-  return [];
 }
 
 async function readChatResponse(res: Response) {
@@ -336,6 +281,15 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
       text: customer
         ? `Hi ${customer.name}, I'm Quicko from QUICK AND EASY. I already have your phone number and Gmail for follow-up. Which emirate or pickup location do you need?`
         : "Hi, I'm Quicko from QUICK AND EASY. Which emirate or pickup location do you need?",
+      options: [
+        "Abu Dhabi",
+        "Dubai",
+        "Sharjah",
+        "Ras Al-Khaimah",
+        "Al Ain",
+        "Fujairah",
+        "Ajman",
+      ],
     },
   ]);
 
@@ -348,10 +302,7 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
     .reverse()
     .find((message) => message.role === "assistant");
 
-  const quickOptions = useMemo(
-    () => getQuickOptions(lastAssistantMessage?.text),
-    [lastAssistantMessage?.text]
-  );
+  const quickOptions = useMemo(() => lastAssistantMessage?.options ?? [], [lastAssistantMessage]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -396,6 +347,7 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
             role: "assistant",
             text: data.reply || "Sorry, I could not generate a response.",
             cars: data.cars ?? [],
+            options: data.options ?? [],
           },
         ];
 
