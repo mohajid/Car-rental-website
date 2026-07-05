@@ -1,7 +1,7 @@
 "use client";
 
 import type { Car } from "@/data/cars";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Lang } from "@/lib/chat-i18n";
 
 type Message = {
@@ -9,14 +9,12 @@ type Message = {
   text: string;
   cars?: Car[];
   payment?: boolean;
-  options?: string[];
 };
 
 type ChatResponse = {
   reply?: string;
   cars?: Car[];
   payment?: boolean;
-  options?: string[];
   language?: Lang;
 };
 
@@ -284,15 +282,6 @@ function getGreeting(customer?: CustomerInfo): Message {
   return {
     role: "assistant",
     text,
-    options: [
-      "Abu Dhabi",
-      "Dubai",
-      "Sharjah",
-      "Ras Al-Khaimah",
-      "Al Ain",
-      "Fujairah",
-      "Ajman",
-    ],
   };
 }
 
@@ -306,12 +295,6 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const documentInputRef = useRef<HTMLInputElement | null>(null);
-
-  const lastAssistantMessage = [...messages]
-    .reverse()
-    .find((message) => message.role === "assistant");
-
-  const quickOptions = useMemo(() => lastAssistantMessage?.options ?? [], [lastAssistantMessage]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -360,7 +343,6 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
             role: "assistant",
             text: data.reply || "Sorry, I could not generate a response.",
             cars: data.cars ?? [],
-            options: data.options ?? [],
           },
         ];
 
@@ -479,20 +461,6 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
                       </div>
                     </div>
                   ))}
-
-                  {quickOptions.length > 0 && !loading && (
-                    <div className="ml-10 flex flex-wrap gap-2">
-                      {quickOptions.map((option) => (
-                        <button
-                          key={option}
-                          onClick={() => sendMessage(option)}
-                          className="rounded-full border border-gray-300 bg-white px-4 py-2 text-base font-semibold text-[#08007a] shadow-sm transition hover:bg-[#08007a] hover:text-white"
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
-                  )}
 
                   {loading && (
                     <div className="flex justify-start">
