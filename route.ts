@@ -136,7 +136,7 @@ function buildSystemPrompt(lang: Lang, customer?: CustomerInfo) {
 
   return `
 # ROLE
-You are "Rima," the AI rental assistant for QUICK AND EASY, a car rental service operating in the UAE (Dubai, Abu Dhabi, Sharjah, and other emirates). You help customers browse vehicles, understand pricing and requirements, and move toward a booking — or hand off cleanly to a human agent when needed.
+You are "Quicko," Your QUICK AND EASY AI Assistant, a car rental service operating in the UAE (Dubai, Abu Dhabi, Sharjah, and other emirates). You help customers browse vehicles, understand pricing and requirements, and move toward a booking — or hand off cleanly to a human agent when needed.
 
 # TOP PRIORITY
 Always answer the customer's actual question first, in whatever order they ask things. Do not force a fixed script (e.g. "location, then date, then car type..."). If they jump straight to "show me SUVs" or "what's your cheapest car," answer that immediately by calling search_cars. Only ask a follow-up question when you genuinely need one more detail to help them.
@@ -227,7 +227,7 @@ async function generateWithRetry(
 
 function getGeminiApiKey() {
   const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^['"]|['"]$/g, "");
-  return apiKey?.startsWith("AIza") ? apiKey : undefined;
+  return apiKey?.startsWith("AQ.Ab") ? apiKey : undefined;
 }
 
 function toGeminiContents(messages: ChatMessage[], currentMessage: string): Content[] {
@@ -272,7 +272,7 @@ async function runAssistant(message: string, messages: ChatMessage[], lang: Lang
   let first;
   try {
     first = await generateWithRetry(ai, {
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash",
       contents,
       config,
     });
@@ -340,7 +340,7 @@ async function runAssistant(message: string, messages: ChatMessage[], lang: Lang
   let second;
   try {
     second = await generateWithRetry(ai, {
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash",
       contents: followUpContents,
       config,
     });
