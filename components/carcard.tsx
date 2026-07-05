@@ -54,7 +54,7 @@ export default function CarCard({ car }: { car: Car }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm text-blue-600 font-medium">{car.category}</p>
-            <h3 className="text-xl font-bold mt-1">{car.model}</h3>
+            <h3 className="text-xl font-bold mt-1 text-neutral-900">{car.model}</h3>
           </div>
           <p className="text-sm font-semibold text-gray-500">{car.year}</p>
         </div>
@@ -79,7 +79,7 @@ export default function CarCard({ car }: { car: Car }) {
 
         <div className="flex justify-between items-center mt-5">
           <div>
-            <p className="font-bold text-lg">AED {car.pricing.daily}/day</p>
+            <p className="font-bold text-lg text-neutral-900">AED {car.pricing.daily}/day</p>
             <p className="text-xs text-gray-500">AED {car.pricing.monthly}/month</p>
           </div>
           <button
