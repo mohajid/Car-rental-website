@@ -2,6 +2,7 @@
 
 import type { Car } from "@/data/cars";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Lang } from "@/lib/chat-i18n";
 
 type Message = {
   role: "user" | "assistant";
@@ -16,6 +17,7 @@ type ChatResponse = {
   cars?: Car[];
   payment?: boolean;
   options?: string[];
+  language?: Lang;
 };
 
 export type CustomerInfo = {
@@ -274,24 +276,31 @@ async function readChatResponse(res: Response) {
   }
 }
 
+function getGreeting(customer?: CustomerInfo): Message {
+  const text = customer
+    ? `Hi ${customer.name}, I'm Quicko from QUICK AND EASY. I already have your phone number and Gmail for follow-up. Which emirate or pickup location do you need?`
+    : "Hi, I'm Quicko from QUICK AND EASY. Which emirate or pickup location do you need?";
+
+  return {
+    role: "assistant",
+    text,
+    options: [
+      "Abu Dhabi",
+      "Dubai",
+      "Sharjah",
+      "Ras Al-Khaimah",
+      "Al Ain",
+      "Fujairah",
+      "Ajman",
+    ],
+  };
+}
+
 export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      text: customer
-        ? `Hi ${customer.name}, I'm Quicko from QUICK AND EASY. I already have your phone number and Gmail for follow-up. Which emirate or pickup location do you need?`
-        : "Hi, I'm Quicko from QUICK AND EASY. Which emirate or pickup location do you need?",
-      options: [
-        "Abu Dhabi",
-        "Dubai",
-        "Sharjah",
-        "Ras Al-Khaimah",
-        "Al Ain",
-        "Fujairah",
-        "Ajman",
-      ],
-    },
-  ]);
+  // Tracks whichever language the bot last replied in, so the UI (text
+  // direction, placeholder, etc.) follows automatically — no toggle needed.
+  const [currentLang, setCurrentLang] = useState<Lang>("en");
+  const [messages, setMessages] = useState<Message[]>([getGreeting(customer)]);
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -340,6 +349,10 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
         throw new Error(data.reply || "Chat request failed");
       }
 
+      if (data.language) {
+        setCurrentLang(data.language);
+      }
+
       setMessages((prev) => {
         const next: Message[] = [
           ...prev,
@@ -368,7 +381,10 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
         ...prev,
         {
           role: "assistant",
-          text: "Sorry, something went wrong. Please try again.",
+          text:
+            currentLang === "ar"
+              ? "عذرًا، حدث خطأ ما. الرجاء المحاولة مرة أخرى."
+              : "Sorry, something went wrong. Please try again.",
         },
       ]);
     } finally {
@@ -388,14 +404,19 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
         ...prev,
         {
           role: "assistant",
-          text: "Please upload PDF files only for verification documents.",
+          text:
+            currentLang === "ar"
+              ? "الرجاء رفع ملفات PDF فقط لمستندات التحقق."
+              : "Please upload PDF files only for verification documents.",
         },
       ]);
       return;
     }
 
     const fileNames = pdfFiles.map((file) => file.name).join(", ");
-    sendMessage(`Uploaded PDF documents: ${fileNames}`);
+    sendMessage(
+      currentLang === "ar" ? `تم رفع مستندات PDF: ${fileNames}` : `Uploaded PDF documents: ${fileNames}`
+    );
 
     if (documentInputRef.current) {
       documentInputRef.current.value = "";
@@ -416,7 +437,7 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
         </div>
 
         <div className="mx-auto max-w-6xl">
-          <div>
+          <div dir={currentLang === "ar" ? "rtl" : "ltr"}>
             <div className="min-h-[520px] rounded-3xl bg-[#f7f8fb] p-5 shadow-xl md:p-8">
               <div className="h-[440px] overflow-y-auto pr-1">
                 <div className="space-y-5">
@@ -508,7 +529,7 @@ export default function Chatbot({ customer }: { customer?: CustomerInfo }) {
 
               <input
                 className="min-w-0 flex-1 rounded-full px-4 py-3 text-lg outline-none"
-                placeholder="Type your message"
+                placeholder={currentLang === "ar" ? "اكتب رسالتك" : "Type your message"}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
