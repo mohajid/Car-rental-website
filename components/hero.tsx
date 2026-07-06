@@ -20,7 +20,7 @@ export default function Hero() {
         <div className="mt-12 flex justify-center">
           <Link
             href="/chat"
-            className="rounded-full bg-chalk px-8 py-4 text-sm font-normal uppercase tracking-wide text-obsidian transition-transform duration-300 hover:bg-white hover:scale-105"
+            className="rounded-full bg-orange-500 px-8 py-4 text-sm font-normal uppercase tracking-wide text-white transition-transform duration-300 hover:bg-orange-600 hover:scale-105"
           >
             Chat with Quicko
           </Link>
