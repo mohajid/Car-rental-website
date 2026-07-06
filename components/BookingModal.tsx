@@ -31,17 +31,6 @@ const initialFormData: BookingFormData = {
   emiratesIdOrPassport: "",
 };
 
-// Shared classes for every text input/date field in this modal. Text color
-// and placeholder color are always set explicitly here — never left to
-// inherit from the page body — because this modal is a white surface and
-// the site's dark-mode text color (near-white) would otherwise make typed
-// text and titles unreadable when the visitor's OS is in Dark Mode.
-const inputClasses =
-  "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-neutral-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600";
-const labelClasses = "block text-sm font-semibold text-neutral-800 mb-1";
-const fileInputClasses =
-  "w-full text-sm text-neutral-700 file:mr-3 file:rounded-full file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-neutral-800";
-
 function calculateDays(start: string, end: string) {
   if (!start || !end) return 0;
   const diff = new Date(end).getTime() - new Date(start).getTime();
@@ -63,6 +52,10 @@ function calculateTotal(car: Car, days: number) {
   }
   return days * car.pricing.daily;
 }
+
+const inputClassName =
+  "w-full rounded border border-graphite bg-transparent px-3 py-2 text-sm text-chalk outline-none transition focus:border-ash";
+const labelClassName = "block text-sm font-normal text-smoke mb-1";
 
 export default function BookingModal({
   car,
@@ -114,26 +107,19 @@ export default function BookingModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div
-        // Forces the browser's native form-control rendering (date pickers,
-        // file inputs, etc.) to use its light-mode palette, regardless of
-        // the visitor's OS dark-mode setting, since this modal is always
-        // a light surface.
-        style={{ colorScheme: "light" }}
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white text-neutral-900 shadow-xl"
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/70 p-4">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-lg border border-graphite bg-carbon">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-carbon border-b border-graphite px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-neutral-900">
+            <h2 className="text-lg font-normal text-chalk">
               {car.year} {car.model}
             </h2>
-            <p className="text-sm text-neutral-600">{car.brand} · {car.category}</p>
+            <p className="text-sm text-smoke">{car.brand} · {car.category}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-500 hover:text-neutral-800 text-xl leading-none"
+            className="text-smoke hover:text-chalk text-xl leading-none"
             aria-label="Close"
           >
             ×
@@ -146,10 +132,10 @@ export default function BookingModal({
             {(["details", "documents", "payment"] as Step[]).map((s, i) => (
               <div
                 key={s}
-                className={`h-1.5 flex-1 rounded-full ${
+                className={`h-1 flex-1 rounded-full ${
                   ["details", "documents", "payment"].indexOf(step) >= i
-                    ? "bg-blue-700"
-                    : "bg-gray-200"
+                    ? "bg-chalk"
+                    : "bg-graphite"
                 }`}
               />
             ))}
@@ -159,10 +145,10 @@ export default function BookingModal({
         <div className="px-6 py-5">
           {step === "details" && (
             <form onSubmit={handleDetailsSubmit} className="space-y-4">
-              <h3 className="font-semibold text-neutral-900">Trip details</h3>
+              <h3 className="font-normal text-chalk">Trip details</h3>
 
               <div>
-                <label className={labelClasses}>
+                <label className={labelClassName}>
                   Pickup location
                 </label>
                 <input
@@ -171,12 +157,12 @@ export default function BookingModal({
                   placeholder="e.g. Dubai Marina"
                   value={formData.pickupLocation}
                   onChange={(e) => updateField("pickupLocation", e.target.value)}
-                  className={inputClasses}
+                  className={inputClassName}
                 />
               </div>
 
               <div>
-                <label className={labelClasses}>
+                <label className={labelClassName}>
                   Drop-off location
                 </label>
                 <input
@@ -185,13 +171,13 @@ export default function BookingModal({
                   placeholder="Same as pickup or a new address"
                   value={formData.dropoffLocation}
                   onChange={(e) => updateField("dropoffLocation", e.target.value)}
-                  className={inputClasses}
+                  className={inputClassName}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClasses}>
+                  <label className={labelClassName}>
                     Start date
                   </label>
                   <input
@@ -199,11 +185,11 @@ export default function BookingModal({
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => updateField("startDate", e.target.value)}
-                    className={inputClasses}
+                    className={inputClassName}
                   />
                 </div>
                 <div>
-                  <label className={labelClasses}>
+                  <label className={labelClassName}>
                     End date
                   </label>
                   <input
@@ -212,24 +198,24 @@ export default function BookingModal({
                     value={formData.endDate}
                     min={formData.startDate}
                     onChange={(e) => updateField("endDate", e.target.value)}
-                    className={inputClasses}
+                    className={inputClassName}
                   />
                 </div>
               </div>
 
               {days > 0 && (
-                <p className="text-sm text-neutral-700 bg-gray-50 rounded-lg px-3 py-2">
+                <p className="text-sm text-smoke rounded border border-graphite px-3 py-2">
                   {days} day{days > 1 ? "s" : ""} · estimated total{" "}
-                  <span className="font-semibold text-neutral-900">
+                  <span className="font-normal text-chalk">
                     AED {total.toLocaleString()}
                   </span>
                 </p>
               )}
 
-              <h3 className="font-semibold text-neutral-900 pt-2">Contact info</h3>
+              <h3 className="font-normal text-chalk pt-2">Contact info</h3>
 
               <div>
-                <label className={labelClasses}>
+                <label className={labelClassName}>
                   Full name
                 </label>
                 <input
@@ -237,13 +223,13 @@ export default function BookingModal({
                   type="text"
                   value={formData.fullName}
                   onChange={(e) => updateField("fullName", e.target.value)}
-                  className={inputClasses}
+                  className={inputClassName}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClasses}>
+                  <label className={labelClassName}>
                     Phone
                   </label>
                   <input
@@ -252,11 +238,11 @@ export default function BookingModal({
                     placeholder="+971 5X XXX XXXX"
                     value={formData.phone}
                     onChange={(e) => updateField("phone", e.target.value)}
-                    className={inputClasses}
+                    className={inputClassName}
                   />
                 </div>
                 <div>
-                  <label className={labelClasses}>
+                  <label className={labelClassName}>
                     Email
                   </label>
                   <input
@@ -264,14 +250,14 @@ export default function BookingModal({
                     type="email"
                     value={formData.email}
                     onChange={(e) => updateField("email", e.target.value)}
-                    className={inputClasses}
+                    className={inputClassName}
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-blue-700 text-white rounded-full py-2.5 font-semibold mt-2"
+                className="w-full bg-chalk text-obsidian rounded-full py-2.5 text-sm font-normal uppercase tracking-wide mt-2 transition hover:bg-white"
               >
                 Continue to documents
               </button>
@@ -280,16 +266,16 @@ export default function BookingModal({
 
           {step === "documents" && (
             <form onSubmit={handleDocumentsSubmit} className="space-y-4">
-              <h3 className="font-semibold text-neutral-900">
+              <h3 className="font-normal text-chalk">
                 Driver&apos;s license &amp; ID
               </h3>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-smoke">
                 Required by UAE rental regulations before pickup.
               </p>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClasses}>
+                  <label className={labelClassName}>
                     License number
                   </label>
                   <input
@@ -297,11 +283,11 @@ export default function BookingModal({
                     type="text"
                     value={formData.licenseNumber}
                     onChange={(e) => updateField("licenseNumber", e.target.value)}
-                    className={inputClasses}
+                    className={inputClassName}
                   />
                 </div>
                 <div>
-                  <label className={labelClasses}>
+                  <label className={labelClassName}>
                     License expiry
                   </label>
                   <input
@@ -309,13 +295,13 @@ export default function BookingModal({
                     type="date"
                     value={formData.licenseExpiry}
                     onChange={(e) => updateField("licenseExpiry", e.target.value)}
-                    className={inputClasses}
+                    className={inputClassName}
                   />
                 </div>
               </div>
 
               <div>
-                <label className={labelClasses}>
+                <label className={labelClassName}>
                   Emirates ID / Passport number
                 </label>
                 <input
@@ -325,12 +311,12 @@ export default function BookingModal({
                   onChange={(e) =>
                     updateField("emiratesIdOrPassport", e.target.value)
                   }
-                  className={inputClasses}
+                  className={inputClassName}
                 />
               </div>
 
               <div>
-                <label className={labelClasses}>
+                <label className={labelClassName}>
                   Upload driving license (front)
                 </label>
                 <input
@@ -338,12 +324,12 @@ export default function BookingModal({
                   type="file"
                   accept="image/*,.pdf"
                   onChange={(e) => setLicenseFile(e.target.files?.[0] ?? null)}
-                  className={fileInputClasses}
+                  className="w-full text-sm text-smoke file:mr-3 file:rounded-full file:border file:border-graphite file:bg-transparent file:px-3 file:py-1.5 file:text-sm file:font-normal file:text-chalk"
                 />
               </div>
 
               <div>
-                <label className={labelClasses}>
+                <label className={labelClassName}>
                   Upload Emirates ID / Passport
                 </label>
                 <input
@@ -351,7 +337,7 @@ export default function BookingModal({
                   type="file"
                   accept="image/*,.pdf"
                   onChange={(e) => setIdFile(e.target.files?.[0] ?? null)}
-                  className={fileInputClasses}
+                  className="w-full text-sm text-smoke file:mr-3 file:rounded-full file:border file:border-graphite file:bg-transparent file:px-3 file:py-1.5 file:text-sm file:font-normal file:text-chalk"
                 />
               </div>
 
@@ -359,13 +345,13 @@ export default function BookingModal({
                 <button
                   type="button"
                   onClick={() => setStep("details")}
-                  className="flex-1 rounded-full border border-gray-300 py-2.5 font-semibold text-neutral-800"
+                  className="flex-1 rounded-full border border-graphite py-2.5 text-sm font-normal uppercase tracking-wide text-smoke transition hover:text-chalk"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-700 text-white rounded-full py-2.5 font-semibold"
+                  className="flex-1 bg-chalk text-obsidian rounded-full py-2.5 text-sm font-normal uppercase tracking-wide transition hover:bg-white"
                 >
                   Continue to payment
                 </button>
@@ -375,31 +361,31 @@ export default function BookingModal({
 
           {step === "payment" && (
             <form onSubmit={handlePaymentSubmit} className="space-y-4">
-              <h3 className="font-semibold text-neutral-900">Payment</h3>
+              <h3 className="font-normal text-chalk">Payment</h3>
 
-              <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm space-y-1">
+              <div className="rounded border border-graphite px-4 py-3 text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Duration</span>
-                  <span className="font-medium text-neutral-900">{days} day{days !== 1 ? "s" : ""}</span>
+                  <span className="text-smoke">Duration</span>
+                  <span className="font-normal text-chalk">{days} day{days !== 1 ? "s" : ""}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Pickup</span>
-                  <span className="font-medium text-neutral-900">{formData.pickupLocation}</span>
+                  <span className="text-smoke">Pickup</span>
+                  <span className="font-normal text-chalk">{formData.pickupLocation}</span>
                 </div>
-                <div className="flex justify-between border-t border-gray-200 mt-2 pt-2">
-                  <span className="text-neutral-800 font-semibold">Total due</span>
-                  <span className="font-bold text-neutral-900">
+                <div className="flex justify-between border-t border-graphite mt-2 pt-2">
+                  <span className="text-smoke font-normal">Total due</span>
+                  <span className="font-normal text-chalk">
                     AED {total.toLocaleString()}
                   </span>
                 </div>
               </div>
 
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-smoke">
                 This is a demo checkout — no real card is charged.
               </p>
 
               <div>
-                <label className={labelClasses}>
+                <label className={labelClassName}>
                   Card number
                 </label>
                 <input
@@ -412,12 +398,12 @@ export default function BookingModal({
                   onChange={(e) =>
                     setCardDetails((p) => ({ ...p, cardNumber: e.target.value }))
                   }
-                  className={inputClasses}
+                  className={inputClassName}
                 />
               </div>
 
               <div>
-                <label className={labelClasses}>
+                <label className={labelClassName}>
                   Name on card
                 </label>
                 <input
@@ -427,13 +413,13 @@ export default function BookingModal({
                   onChange={(e) =>
                     setCardDetails((p) => ({ ...p, cardName: e.target.value }))
                   }
-                  className={inputClasses}
+                  className={inputClassName}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelClasses}>
+                  <label className={labelClassName}>
                     Expiry
                   </label>
                   <input
@@ -445,11 +431,11 @@ export default function BookingModal({
                     onChange={(e) =>
                       setCardDetails((p) => ({ ...p, expiry: e.target.value }))
                     }
-                    className={inputClasses}
+                    className={inputClassName}
                   />
                 </div>
                 <div>
-                  <label className={labelClasses}>
+                  <label className={labelClassName}>
                     CVV
                   </label>
                   <input
@@ -461,7 +447,7 @@ export default function BookingModal({
                     onChange={(e) =>
                       setCardDetails((p) => ({ ...p, cvv: e.target.value }))
                     }
-                    className={inputClasses}
+                    className={inputClassName}
                   />
                 </div>
               </div>
@@ -471,14 +457,14 @@ export default function BookingModal({
                   type="button"
                   onClick={() => setStep("documents")}
                   disabled={isProcessingPayment}
-                  className="flex-1 rounded-full border border-gray-300 py-2.5 font-semibold text-neutral-800 disabled:opacity-50"
+                  className="flex-1 rounded-full border border-graphite py-2.5 text-sm font-normal uppercase tracking-wide text-smoke transition hover:text-chalk disabled:opacity-50"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={isProcessingPayment}
-                  className="flex-1 bg-blue-700 text-white rounded-full py-2.5 font-semibold disabled:bg-blue-300"
+                  className="flex-1 bg-chalk text-obsidian rounded-full py-2.5 text-sm font-normal uppercase tracking-wide transition hover:bg-white disabled:bg-graphite disabled:text-iron"
                 >
                   {isProcessingPayment
                     ? "Processing…"
@@ -490,26 +476,26 @@ export default function BookingModal({
 
           {step === "success" && (
             <div className="text-center py-6 space-y-3">
-              <div className="mx-auto w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-2xl">
+              <div className="mx-auto w-14 h-14 rounded-full border border-graphite flex items-center justify-center text-pulse text-2xl">
                 ✓
               </div>
-              <h3 className="text-lg font-bold text-neutral-900">Booking confirmed</h3>
-              <p className="text-sm text-neutral-600">
+              <h3 className="text-lg font-normal text-chalk">Booking confirmed</h3>
+              <p className="text-sm text-smoke">
                 Your {car.model} is reserved from {formData.startDate} to{" "}
                 {formData.endDate}. A confirmation has been sent to{" "}
                 {formData.email}.
               </p>
-              <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-left">
+              <div className="rounded border border-graphite px-4 py-3 text-sm text-left">
                 <div className="flex justify-between">
-                  <span className="text-neutral-600">Amount paid</span>
-                  <span className="font-semibold text-neutral-900">
+                  <span className="text-smoke">Amount paid</span>
+                  <span className="font-normal text-chalk">
                     AED {total.toLocaleString()}
                   </span>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="w-full bg-blue-700 text-white rounded-full py-2.5 font-semibold mt-2"
+                className="w-full bg-chalk text-obsidian rounded-full py-2.5 text-sm font-normal uppercase tracking-wide mt-2 transition hover:bg-white"
               >
                 Done
               </button>
