@@ -3,9 +3,12 @@ import CarCard from "@/components/carcard";
 
 export default function FleetPage() {
   return (
-    <main className="max-w-7xl mx-auto px-6 py-16">
-      <h1 className="text-4xl font-bold">Our Fleet</h1>
-      <p className="text-gray-500 mt-2">
+    <main className="max-w-[1200px] mx-auto px-6 pb-16 pt-32">
+      <p className="text-sm font-normal uppercase tracking-[0.2em] text-gold">
+        Fleet
+      </p>
+      <h1 className="mt-4 text-4xl font-normal tracking-tight text-chalk md:text-5xl md:tracking-[-0.02em]">Our Fleet</h1>
+      <p className="mt-4 max-w-2xl text-lg text-smoke">
         Explore our full rental fleet across sedan, SUV, luxury, electric, sports, economy, and hatchback options.
       </p>
 
