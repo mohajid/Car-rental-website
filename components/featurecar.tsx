@@ -5,9 +5,12 @@ export default function FeaturedCars() {
   const featuredCars = cars.filter((car) => car.available).slice(0, 6);
 
   return (
-    <section className="mx-auto max-w-7xl px-6 py-16">
-      <h2 className="text-center text-3xl font-bold text-white">Featured Cars</h2>
-      <p className="mt-2 text-center text-white/80">
+    <section className="mx-auto max-w-[1200px] px-6 py-16 border-t border-graphite">
+      <p className="text-sm font-normal uppercase tracking-[0.2em] text-gold text-center">
+        Fleet
+      </p>
+      <h2 className="mt-4 text-center text-3xl font-normal tracking-tight text-chalk">Featured Cars</h2>
+      <p className="mt-2 text-center text-smoke">
         Choose from our most popular rental cars.
       </p>
 
@@ -19,3 +22,4 @@ export default function FeaturedCars() {
     </section>
   );
 }
+
